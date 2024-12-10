@@ -1,6 +1,7 @@
 import torch
 #from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from transformers import GPT2LMHeadModel, PreTrainedTokenizerFast
+import config as cfg
 
 # GPU가 있는 머신에서는 GPU 사용, GPU가 없는 머신에서는 CPU 사용
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,7 +61,7 @@ while True:
         print(f"Total parameters: {total_params}")
 
         # 토큰 제한을 둬서 최신 대화만 유지 필요
-        max_length = input_ids.shape[1] + 200  # 입력 길이 + 생성할 길이
+        max_length = input_ids.shape[1] + cfg.TOKEN_LENGTH  # 입력 길이 + 생성할 길이
         attention_mask = torch.ones(input_ids.shape, dtype=torch.long)
         pad_token_id = tokenizer.eos_token_id
 
