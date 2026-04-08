@@ -9,7 +9,7 @@ import config as cfg
 from deep_translator import GoogleTranslator
 from device import get_device #type: ignore
 import torch
-#from transformers import GPT2LMHeadModel, PreTrainedTokenizerFast
+from train import set_train #type: ignore
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class JagalGpt:
@@ -31,13 +31,11 @@ class JagalGpt:
         # gpt-4 : 파라미터 수와 모델 크기에 대한 공식적인 정보가 공개되지 않았음
 
         try:
-            #model = GPT2LMHeadModel.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
-            #tokenizer = PreTrainedTokenizerFast.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
             model = AutoModelForCausalLM.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
             tokenizer = AutoTokenizer.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
 
             model.to(self.device) # default: CPU 연산
-            model.eval() # 모델을 학습모드에서 추론모드로 전환
+            model = set_train(model, False) # 모델을 학습모드에서 추론모드로 전환
 
             return model, tokenizer, None
         except Exception as e:
