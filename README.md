@@ -23,6 +23,11 @@
 - GPU (권장): 빠른 추론을 위해 CUDA 지원 GPU 사용을 권장합니다.
 - CPU: 지원되지만 응답 시간이 느릴 수 있습니다.
 
+## Docker
+
+- 도커 빌드: docker build -t jagal-gpt .
+- 도커 실행: docker run -it jagal-gpt
+
 ## 실행 후 상호작용
 
 - 터미널에 메시지를 입력하고 Enter를 누릅니다.

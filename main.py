@@ -8,6 +8,7 @@ sys.path.insert(0, str(UTILS_DIR))
 import config as cfg
 from deep_translator import GoogleTranslator
 from device import get_device #type: ignore
+from encode import encode_to_device #type: ignore
 import torch
 from train import set_train #type: ignore
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -42,7 +43,7 @@ class JagalGpt:
             return None, None, e
     
     def generate_response(self, model, tokenizer):
-        input_ids = tokenizer.encode(self.dialogue, return_tensors='pt').to(self.device)
+        input_ids = encode_to_device(tokenizer, self.dialogue, self.device)
 
         embedding_output = model.transformer.wte(input_ids)
         print(f"Embedding output: {embedding_output}")
