@@ -1,6 +1,7 @@
 # AI 기반 LLM을 활용한 인공신경망 대화 모델 구축
 
-- Creator: 김병민
+- Creator: 김병민 (로컬 리포지토리 생성 2024년 5월, 리모트 리포지토리 생성 2024년 12월)
+- curl https://api.github.com/repos/jagalmon/jagal-gpt
 - 이 코드는 Hugging Face의 Transformers 라이브러리를 사용하여 GPT-2 모델 기반의 인터랙티브 AI을 구현한 Python 코드입니다. 대화 히스토리를 유지하며 문맥에 맞는 응답을 생성할 수 있는 대화형 인터페이스를 제공합니다. GPU와 CPU 환경 모두에서 동작하도록 설계되었습니다.
 
 ## 주요 기능
@@ -32,7 +33,7 @@
 
 - 터미널에 메시지를 입력하고 Enter를 누릅니다.
 - reset을 입력하면 대화 히스토리가 초기화됩니다.
-- exit 또는 quit을 입력하면 AI가 종료됩니다.
+- exit를 입력하면 AI가 종료됩니다.
 
 ## 설정
 
