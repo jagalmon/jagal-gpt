@@ -18,6 +18,7 @@ build/
 # 로그/임시
 temp/
 tmp/
+logs/
 *.log
 
 # 메타데이터
@@ -25,3 +26,8 @@ tmp/
 
 # LLM 모델
 llm-cache/
+
+# 학습셋/데이터셋
+dataset/
+*.json
+*.jsonl

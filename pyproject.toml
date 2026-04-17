@@ -1,4 +1,6 @@
 torch
 transformers
+peft
+datasets
 deep-translator
 pyarmor

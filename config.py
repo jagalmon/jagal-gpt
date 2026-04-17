@@ -1,3 +1,14 @@
-MODEL_NAME = 'google/gemma-2b-it'
+MODEL_GPT2 = 'gpt2'
+MODEL_GPT2_MEDIUM = 'gpt2-medium'
+MODEL_GPT2_LARGE = 'gpt2-large'
+MODEL_GPT2_XL = 'gpt2-xl'
+MODEL_GEMMA_DEV_BASE = 'google/gemma-2b'
+MODEL_GEMMA_DEV_TUNE = 'google/gemma-2b-it'
+MODEL_GEMMA_PROD_BASE = 'google/gemma-7b'
+MODEL_GEMMA_PROD_TUNE = 'google/gemma-7b-it'
+MODEL_NAME = MODEL_GEMMA_DEV_TUNE
 CACHE_DIR = './llm-cache/'
+DATASET_DEFAULT = 'train_default.jsonl'
+DATASET_CUSTOM01 = 'train_public.jsonl'
+DATASET_CUSTOM02 = 'train_test.jsonl'
 TOKEN_LENGTH = 200

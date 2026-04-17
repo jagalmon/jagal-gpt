@@ -8,24 +8,36 @@ BASE_DIR = Path(__file__).resolve().parent
 UTILS_DIR = BASE_DIR / "utils"
 sys.path.insert(0, str(UTILS_DIR))
 
+import argparse
 import config as cfg
 import certifi
+from datasets import load_dataset
 from deep_translator import GoogleTranslator
 from device import get_device #type: ignore
 from encode import encode_to_device #type: ignore
+from pretrained import load_model #type: ignore
 import logging
 import multiprocessing as mp
 import os
+from peft import LoraConfig, get_peft_model
 import requests
 import ssl
 import torch
-from train import set_train #type: ignore
 import traceback
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedTokenizerBase,
+    Trainer,
+    TrainingArguments,
+    DataCollatorForLanguageModeling
+)
 
 class JagalGpt:
 
-    def __init__(self):
+    def __init__(self, mode: str, dataset: str):
+        self.mode = mode
+        self.dataset = dataset
         self.device = get_device()
         self.dialogue = ""
         print(f"========== Able device: {self.device}")
@@ -35,33 +47,9 @@ class JagalGpt:
 
         print(f"========== Insecure HTTPS request : {requests.get('https://huggingface.co', verify=False)}")
     
-    def torch_device(self):
-        pass
-
-    def load_model(self):
-        # gpt2 : 117M(파라미터 약 1.17억 개), 500MB
-        # gpt2-medium : 345M(파라미터 약 3.45억 개), 1.5GB
-        # gpt2-large : 774M(파라미터 약 7.74억 개), 3GB
-        # gpt2-xl : 1.5 billion(파라미터 약 15억 개), 6GB
-        # gpt-3 : 175 billion, 약 350GB
-        # gpt-4 : 파라미터 수와 모델 크기에 대한 공식적인 정보가 공개되지 않았음
-
-        try:
-            model = AutoModelForCausalLM.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
-            tokenizer = AutoTokenizer.from_pretrained(cfg.MODEL_NAME, cache_dir=cfg.CACHE_DIR)
-
-            model.to(self.device) # default: CPU 연산
-            model = set_train(model, False) # 모델을 학습모드에서 추론모드로 전환
-
-            return model, tokenizer, None
-        except Exception as e:
-            traceback.print_exc()
-            return None, None, e
-    
-    def generate_response(self, model, tokenizer):
+    def generate_response(self, model, tokenizer) -> str:
         input_ids = encode_to_device(tokenizer, self.dialogue, self.device)
 
-        #if re.search(r"py.*on", text):
         if "gpt" in cfg.MODEL_NAME:
             embedding_output = model.transformer.wte(input_ids)
             attention_mask = torch.ones(input_ids.shape, dtype=torch.long).to(self.device)
@@ -69,6 +57,21 @@ class JagalGpt:
         elif "gemma" in cfg.MODEL_NAME:
             embedding_output = model.get_input_embeddings()(input_ids)
             attention_mask = torch.ones_like(input_ids).to(self.device)
+        
+        elif "llama" in cfg.MODEL_NAME:
+            pass
+
+        elif "phi" in cfg.MODEL_NAME:
+            pass
+
+        elif "mistralai" in cfg.MODEL_NAME:
+            pass
+
+        elif "bloom" in cfg.MODEL_NAME:
+            pass
+
+        elif "falcon" in cfg.MODEL_NAME:
+            pass
 
         else:
             pass
@@ -152,8 +155,12 @@ class JagalGpt:
     def append_history(self, text) -> None:
         self.dialogue += f"{text}\n"
 
-    def main(self) -> None:
-        model, tokenizer, e = self.load_model()
+    def infer(self) -> None:
+        model: AutoModelForCausalLM | None
+        tokenizer: AutoTokenizer | None
+        e: Exception | None
+
+        model, tokenizer, e = load_model(cfg.MODEL_NAME, cfg.CACHE_DIR, self.device, self.mode)
 
         if model is None or tokenizer is None:
             print(f"Error loading model or tokenizer: {e}")
@@ -186,10 +193,95 @@ class JagalGpt:
                 print(f"Error occurred while running model: {e}")
                 traceback.print_exc()
 
+    def preprocess(example: dict, tokenizer: PreTrainedTokenizerBase) -> dict:
+        user = example["messages"][0]["content"]
+        assistant = example["messages"][1]["content"]
+
+        text = f"User: {user}\nAssistant: {assistant}"
+
+        tokens = tokenizer(
+            text,
+            truncation=True,
+            padding="max_length",
+            max_length=512
+        )
+
+        tokens["labels"] = tokens["input_ids"].copy()
+        return tokens
+
+    def train(self) -> None:
+        model: AutoModelForCausalLM | None
+        tokenizer: PreTrainedTokenizerBase | None
+        e: Exception | None
+
+        model, tokenizer, e = load_model(cfg.MODEL_NAME, cfg.CACHE_DIR, self.device, self.mode)
+
+        if model is None or tokenizer is None:
+            print(f"Error loading model or tokenizer: {e}")
+            exit()
+
+        lora_config = LoraConfig(
+            r=8,
+            lora_alpha=16,
+            target_modules=["q_proj", "v_proj"]
+        )
+
+        model = get_peft_model(model, lora_config)
+
+        dataset = load_dataset("json", data_files=cfg.DATASET_DEFAULT)
+        train_dataset = dataset["train"]
+
+        train_dataset = train_dataset.map(
+            lambda x: self.preprocess(x, tokenizer),
+            remove_columns=train_dataset.column_names
+        )
+
+        data_collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer,
+            mlm=False
+        )
+        
+        training_args = TrainingArguments(
+            output_dir="./result",
+            per_device_train_batch_size=2,
+            num_train_epochs=3
+        )
+
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            data_collator=data_collator
+        )
+
+        trainer.train()
+
 if __name__ == "__main__":
+    # gpt2 : 117M(파라미터 약 1.17억 개), 500MB
+    # gpt2-medium : 345M(파라미터 약 3.45억 개), 1.5GB
+    # gpt2-large : 774M(파라미터 약 7.74억 개), 3GB
+    # gpt2-xl : 1.5 billion(파라미터 약 15억 개), 6GB
+    # gpt-3 : 175 billion, 약 350GB
+    # gpt-4 : 파라미터 수와 모델 크기에 대한 공식적인 정보가 공개되지 않았음
+
     mp.set_start_method("spawn", force=True)
 
     logging.basicConfig(level=logging.INFO)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, choices=["train", "infer"])
+    parser.add_argument("--dataset", type=str, default=cfg.DATASET_DEFAULT)
+    args = parser.parse_args()
+
+    print(f"========== params(--mode): [{args.mode}], params(--dataset): [{args.dataset}]")
+
+    llm = JagalGpt(args.mode, args.dataset)
     
-    llm = JagalGpt()
-    llm.main()
+    if not args.mode or "infer" == args.mode: # Inference mode (파라미터 없을시 추론 모드로 진입)
+        llm.infer()
+    
+    elif "train" == args.mode: # Training mode (학습셋 파일 명시 필수)
+        llm.train()
+
+    else:
+        pass
