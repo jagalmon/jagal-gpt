@@ -1,6 +1,8 @@
 torch
 transformers
+numpy<2
 peft
 datasets
 deep-translator
+fasttext
 pyarmor

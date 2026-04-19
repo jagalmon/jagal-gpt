@@ -11,6 +11,7 @@ sys.path.insert(0, str(UTILS_DIR))
 import argparse
 import config as cfg
 import certifi
+from classifier import load_classifier, detect_lang #type: ignore
 from datasets import load_dataset
 from device import get_device #type: ignore
 from encode import encode_to_device #type: ignore
@@ -32,6 +33,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
+import urllib.request
 
 class JagalGpt:
 
@@ -46,6 +48,17 @@ class JagalGpt:
         print(f"========== SSL cert path: {ssl.get_default_verify_paths()}")
 
         print(f"========== Insecure HTTPS request : {requests.get('https://huggingface.co', verify=False)}")
+
+        classifier_path = os.path.join(cfg.CACHE_DIR, cfg.CLASSIFIER_PATH)
+        print(f"========== Classifier path: {classifier_path}")
+
+        if not os.path.exists(classifier_path):
+            urllib.request.urlretrieve(
+                cfg.CLASSIFIER_URL,
+                classifier_path
+            )
+
+        self.classifier = load_classifier()
     
     def generate_response(self, model, tokenizer) -> str:
         input_ids = encode_to_device(tokenizer, self.dialogue, self.device)
@@ -177,6 +190,12 @@ class JagalGpt:
                 self.reset_history()
                 print("Dialogue history has been reset.")
                 continue
+
+            lang_label = detect_lang(self.classifier, user_input)
+
+            if "__label__en" != lang_label:
+                user_input = any_to_english(user_input)
+                print(f"========== translator: {user_input}")
 
             self.append_history(user_input)
 
