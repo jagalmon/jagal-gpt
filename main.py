@@ -12,7 +12,6 @@ import argparse
 import config as cfg
 import certifi
 from datasets import load_dataset
-from deep_translator import GoogleTranslator
 from device import get_device #type: ignore
 from encode import encode_to_device #type: ignore
 from pretrained import load_model #type: ignore
@@ -24,6 +23,7 @@ import requests
 import ssl
 import torch
 import traceback
+from translator import any_to_english, english_to_korean #type: ignore
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -184,8 +184,8 @@ class JagalGpt:
                 response = self.generate_response(model, tokenizer)
 
                 ai_response = response[len(self.dialogue):]
-                print(f"AI: {ai_response}")
-                print(f"AI: {GoogleTranslator(source='auto', target='ko').translate(ai_response)}")
+                print(f"AI: {ai_response}", end="\n\n")
+                print(f"AI: {english_to_korean(ai_response)}", end="\n\n")
 
                 self.append_history(ai_response)
 
