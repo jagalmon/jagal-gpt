@@ -16,12 +16,14 @@ from datasets import load_dataset
 from device import get_device #type: ignore
 from dotenv import load_dotenv
 from encode import encode_to_device #type: ignore
+import getpass
 from harness import init_harness, proc_harness #type: ignore
 from pretrained import load_model #type: ignore
 import logging
 import multiprocessing as mp
 import os
 from peft import LoraConfig, get_peft_model
+import platform
 from pydantic import BaseModel, Field, PrivateAttr
 import pytest
 import requests as rqs
@@ -43,6 +45,7 @@ import urllib.request
 class JagalGpt(BaseModel):
     mode: str | None
     dataset: str
+    username: str
     device: str = Field(default_factory=get_device)
     dialogue: str = ""
     _classifier = PrivateAttr()
@@ -53,7 +56,7 @@ class JagalGpt(BaseModel):
         os.environ['SSL_CERT_FILE'] = ctf.where()
         print(f"========== SSL cert path: {ssl.get_default_verify_paths()}")
 
-        print(f"========== Insecure HTTPS request : {rqs.get('https://huggingface.co', verify=False)}")
+        print(f"========== Insecure HTTPS request: {rqs.get('https://huggingface.co', verify=False)}")
 
     def model_post_init(self, __context):
         print(f"========== Able device: {self.device}")
@@ -188,7 +191,7 @@ class JagalGpt(BaseModel):
     
     def append_history(self, text) -> None:
         self.dialogue += f"{text}\n"
-        #self.dialogue += f"User: {text}\nAI:"
+        #self.dialogue += f"{self.username}: {text}\nAI:"
 
     def infer(self) -> None:
         model: AutoModelForCausalLM | None
@@ -205,7 +208,7 @@ class JagalGpt(BaseModel):
         print(f"========== Total parameters: {total_params}")
 
         while True:
-            user_input = input("User: ")
+            user_input = input(f"{self.username}: ")
             if user_input.lower() in ["exit"]:
                 break
             elif user_input.lower() == "reset":
@@ -235,11 +238,11 @@ class JagalGpt(BaseModel):
                 print(f"Error occurred while running model: {e}")
                 tb.print_exc()
 
-    def preprocess(example: dict, tokenizer: PreTrainedTokenizerBase) -> dict:
+    def preprocess(self, example: dict, tokenizer: PreTrainedTokenizerBase) -> dict:
         user = example["messages"][0]["content"]
         assistant = example["messages"][1]["content"]
 
-        text = f"User: {user}\nAssistant: {assistant}"
+        text = f"{self.username}: {user}\nAssistant: {assistant}"
 
         tokens = tokenizer(
             text,
@@ -306,6 +309,9 @@ if __name__ == "__main__":
     # gpt-3 : 175 billion, 약 350GB
     # gpt-4 : 파라미터 수와 모델 크기에 대한 공식적인 정보가 공개되지 않았음
 
+    print(f"========== Kernel: {platform.system()}")
+    print(f"========== username: {getpass.getuser()}")
+
     mp.set_start_method("spawn", force=True)
 
     logging.basicConfig(level=logging.INFO)
@@ -317,7 +323,7 @@ if __name__ == "__main__":
 
     print(f"========== params(--mode): [{args.mode}], params(--dataset): [{args.dataset}]")
 
-    llm = JagalGpt(mode=args.mode, dataset=args.dataset)
+    llm = JagalGpt(mode=args.mode, dataset=args.dataset, username=getpass.getuser())
     
     if not args.mode or "infer" == args.mode: # Inference mode (파라미터 없을시 추론 모드로 진입)
         llm.infer()
@@ -333,10 +339,6 @@ def add(a, b):
 
 def divide(a, b):
     return a / b
-
-def fetch_status():
-    import requests
-    return requests.get("https://example.com").status_code
 
 @pytest.fixture
 def sample_data():
@@ -357,7 +359,13 @@ def test_divide_zero():
     with pytest.raises(ZeroDivisionError):
         divide(1, 0)
 
+def fetch_status():
+    return rqs.get(cfg.CLASSIFIER_URL).status_code
+
+def test_fetch_status():
+    assert fetch_status() == 200
+
 @patch("requests.get")
-def test_fetch_status(mock_get):
+def test_fetch_status_mock(mock_get):
     mock_get.return_value.status_code = 200
     assert fetch_status() == 200
