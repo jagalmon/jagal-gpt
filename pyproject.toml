@@ -1,3 +1,7 @@
+
+ruff
+python-dotenv
+pytest
 torch
 transformers
 numpy<2

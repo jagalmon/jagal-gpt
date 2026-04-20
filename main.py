@@ -8,22 +8,26 @@ BASE_DIR = Path(__file__).resolve().parent
 UTILS_DIR = BASE_DIR / "utils"
 sys.path.insert(0, str(UTILS_DIR))
 
-import argparse
+import argparse as ap
 import config as cfg
-import certifi
+import certifi as ctf
 from classifier import load_classifier, detect_lang #type: ignore
 from datasets import load_dataset
 from device import get_device #type: ignore
+#from dotenv import load_dotenv
 from encode import encode_to_device #type: ignore
+from harness import init_harness, proc_harness #type: ignore
 from pretrained import load_model #type: ignore
 import logging
 import multiprocessing as mp
 import os
 from peft import LoraConfig, get_peft_model
-import requests
+#from pydantic import BaseModel
+import pytest
+import requests as rqs
 import ssl
 import torch
-import traceback
+import traceback as tb
 from translator import any_to_english, english_to_korean #type: ignore
 from transformers import (
     AutoModelForCausalLM,
@@ -33,6 +37,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
+from unittest.mock import patch
 import urllib.request
 
 class JagalGpt:
@@ -44,21 +49,26 @@ class JagalGpt:
         self.dialogue = ""
         print(f"========== Able device: {self.device}")
 
-        os.environ['SSL_CERT_FILE'] = certifi.where()
+        os.environ['SSL_CERT_FILE'] = ctf.where()
         print(f"========== SSL cert path: {ssl.get_default_verify_paths()}")
 
-        print(f"========== Insecure HTTPS request : {requests.get('https://huggingface.co', verify=False)}")
+        print(f"========== Insecure HTTPS request : {rqs.get('https://huggingface.co', verify=False)}")
 
         classifier_path = os.path.join(cfg.CACHE_DIR, cfg.CLASSIFIER_PATH)
         print(f"========== Classifier path: {classifier_path}")
 
         if not os.path.exists(classifier_path):
+            print(f"========== Classifier not exists")
             urllib.request.urlretrieve(
                 cfg.CLASSIFIER_URL,
                 classifier_path
             )
+        else:
+            print(f"========== Classifier already exists")
 
         self.classifier = load_classifier()
+
+        init_harness()
     
     def generate_response(self, model, tokenizer) -> str:
         input_ids = encode_to_device(tokenizer, self.dialogue, self.device)
@@ -203,6 +213,8 @@ class JagalGpt:
                 response = self.generate_response(model, tokenizer)
 
                 ai_response = response[len(self.dialogue):]
+                ai_response = proc_harness(ai_response)
+                
                 print(f"AI: {ai_response}", end="\n\n")
                 print(f"AI: {english_to_korean(ai_response)}", end="\n\n")
 
@@ -210,7 +222,7 @@ class JagalGpt:
 
             except Exception as e:
                 print(f"Error occurred while running model: {e}")
-                traceback.print_exc()
+                tb.print_exc()
 
     def preprocess(example: dict, tokenizer: PreTrainedTokenizerBase) -> dict:
         user = example["messages"][0]["content"]
@@ -287,7 +299,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser()
+    parser = ap.ArgumentParser()
     parser.add_argument("--mode", type=str, choices=["train", "infer"])
     parser.add_argument("--dataset", type=str, default=cfg.DATASET_DEFAULT)
     args = parser.parse_args()
@@ -304,3 +316,37 @@ if __name__ == "__main__":
 
     else:
         pass
+
+def add(a, b):
+    return a + b
+
+def divide(a, b):
+    return a / b
+
+def fetch_status():
+    import requests
+    return requests.get("https://example.com").status_code
+
+@pytest.fixture
+def sample_data():
+    return {"a": 10, "b": 20}
+
+@pytest.mark.parametrize("a,b,expected", [
+    (1, 2, 3),
+    (2, 3, 5),
+    (10, 20, 30),
+])
+def test_add(a, b, expected):
+    assert add(a, b) == expected
+
+def test_add_with_fixture(sample_data):
+    assert add(sample_data["a"], sample_data["b"]) == 30
+
+def test_divide_zero():
+    with pytest.raises(ZeroDivisionError):
+        divide(1, 0)
+
+@patch("requests.get")
+def test_fetch_status(mock_get):
+    mock_get.return_value.status_code = 200
+    assert fetch_status() == 200
