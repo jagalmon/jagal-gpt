@@ -115,7 +115,8 @@ class JagalGpt(BaseModel):
         print(f"========== Embedding shape: {embedding_output.shape}")
         print(f"========== Token length: {input_ids.shape[1]}")
 
-        with torch.no_grad(): # 그래디언트 계산을 비활성화하여 추론 중 메모리를 절약하고 속도를 높임
+        #with torch.no_grad(): # gradient 계산 비활성화
+        with torch.inference_mode(): # gradient 계산 비활성화, autograd 그래프 생성 안함, 역전파 비용 없음, intermediate tensors 저장 최소화
             outputs = model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -177,7 +178,8 @@ class JagalGpt(BaseModel):
                 exponential_decay_length_penalty=None,
             )
 
-        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        #generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True) # 입력 토큰 + 생성 토큰 전체
+        generated_text = tokenizer.decode(outputs[0][input_ids.shape[1]:], skip_special_tokens=True) # 입력 제외 + 생성된 토큰만
 
         return generated_text
 
@@ -186,6 +188,7 @@ class JagalGpt(BaseModel):
     
     def append_history(self, text) -> None:
         self.dialogue += f"{text}\n"
+        #self.dialogue += f"User: {text}\nAI:"
 
     def infer(self) -> None:
         model: AutoModelForCausalLM | None
@@ -221,8 +224,7 @@ class JagalGpt(BaseModel):
             try:
                 response = self.generate_response(model, tokenizer)
 
-                ai_response = response[len(self.dialogue):]
-                ai_response = proc_harness(ai_response)
+                ai_response = proc_harness(response)
                 
                 print(f"AI: \"{ai_response}\"", end="\n\n")
                 print(f"AI: \"{english_to_korean(ai_response)}\"", end="\n\n")
