@@ -14,7 +14,7 @@ import certifi as ctf
 from classifier import load_classifier, detect_lang #type: ignore
 from datasets import load_dataset
 from device import get_device #type: ignore
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 from encode import encode_to_device #type: ignore
 from harness import init_harness, proc_harness #type: ignore
 from pretrained import load_model #type: ignore
@@ -22,7 +22,7 @@ import logging
 import multiprocessing as mp
 import os
 from peft import LoraConfig, get_peft_model
-#from pydantic import BaseModel
+from pydantic import BaseModel, Field, PrivateAttr
 import pytest
 import requests as rqs
 import ssl
@@ -40,19 +40,23 @@ from transformers import (
 from unittest.mock import patch
 import urllib.request
 
-class JagalGpt:
+class JagalGpt(BaseModel):
+    mode: str | None
+    dataset: str
+    device: str = Field(default_factory=get_device)
+    dialogue: str = ""
+    _classifier = PrivateAttr()
 
-    def __init__(self, mode: str, dataset: str):
-        self.mode = mode
-        self.dataset = dataset
-        self.device = get_device()
-        self.dialogue = ""
-        print(f"========== Able device: {self.device}")
+    def __init__(self, **data):
+        super().__init__(**data)
 
         os.environ['SSL_CERT_FILE'] = ctf.where()
         print(f"========== SSL cert path: {ssl.get_default_verify_paths()}")
 
         print(f"========== Insecure HTTPS request : {rqs.get('https://huggingface.co', verify=False)}")
+
+    def model_post_init(self, __context):
+        print(f"========== Able device: {self.device}")
 
         classifier_path = os.path.join(cfg.CACHE_DIR, cfg.CLASSIFIER_PATH)
         print(f"========== Classifier path: {classifier_path}")
@@ -66,10 +70,10 @@ class JagalGpt:
         else:
             print(f"========== Classifier already exists")
 
-        self.classifier = load_classifier()
+        self._classifier = load_classifier()
 
         init_harness()
-    
+
     def generate_response(self, model, tokenizer) -> str:
         input_ids = encode_to_device(tokenizer, self.dialogue, self.device)
 
@@ -206,7 +210,7 @@ class JagalGpt:
                 print("Dialogue history has been reset.")
                 continue
 
-            lang_label = detect_lang(self.classifier, user_input)
+            lang_label = detect_lang(self._classifier, user_input)
 
             if "__label__en" != lang_label:
                 user_input = any_to_english(user_input)
@@ -311,7 +315,7 @@ if __name__ == "__main__":
 
     print(f"========== params(--mode): [{args.mode}], params(--dataset): [{args.dataset}]")
 
-    llm = JagalGpt(args.mode, args.dataset)
+    llm = JagalGpt(mode=args.mode, dataset=args.dataset)
     
     if not args.mode or "infer" == args.mode: # Inference mode (파라미터 없을시 추론 모드로 진입)
         llm.infer()
