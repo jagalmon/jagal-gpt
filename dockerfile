@@ -7,4 +7,4 @@ RUN pip install -r pyproject.toml
 
 COPY . .
 
-CMD ["python", "main.py", "--mode", "infer"]
+CMD ["python", "agent.py", "--mode", "infer"]

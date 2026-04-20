@@ -214,7 +214,7 @@ class JagalGpt(BaseModel):
 
             if "__label__en" != lang_label:
                 user_input = any_to_english(user_input)
-                print(f"========== translator: {user_input}")
+                print(f"========== translator: \"{user_input}\"")
 
             self.append_history(user_input)
 
@@ -224,8 +224,8 @@ class JagalGpt(BaseModel):
                 ai_response = response[len(self.dialogue):]
                 ai_response = proc_harness(ai_response)
                 
-                print(f"AI: {ai_response}", end="\n\n")
-                print(f"AI: {english_to_korean(ai_response)}", end="\n\n")
+                print(f"AI: \"{ai_response}\"", end="\n\n")
+                print(f"AI: \"{english_to_korean(ai_response)}\"", end="\n\n")
 
                 self.append_history(ai_response)
 
