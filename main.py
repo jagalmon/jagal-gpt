@@ -82,19 +82,24 @@ class JagalGpt:
             attention_mask = torch.ones_like(input_ids).to(self.device)
         
         elif "llama" in cfg.MODEL_NAME:
-            pass
+            embedding_output = model.get_input_embeddings()(input_ids)
+            attention_mask = torch.ones_like(input_ids).to(self.device)
 
         elif "phi" in cfg.MODEL_NAME:
-            pass
+            embedding_output = model.get_input_embeddings()(input_ids)
+            attention_mask = torch.ones_like(input_ids).to(self.device)
 
         elif "mistralai" in cfg.MODEL_NAME:
-            pass
+            embedding_output = model.get_input_embeddings()(input_ids)
+            attention_mask = torch.ones_like(input_ids).to(self.device)
 
         elif "bloom" in cfg.MODEL_NAME:
-            pass
+            embedding_output = model.transformer.word_embeddings(input_ids)
+            attention_mask = torch.ones_like(input_ids).to(self.device)
 
         elif "falcon" in cfg.MODEL_NAME:
-            pass
+            embedding_output = model.transformer.word_embeddings(input_ids)
+            attention_mask = torch.ones_like(input_ids).to(self.device)
 
         else:
             pass
