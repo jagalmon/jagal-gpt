@@ -9,6 +9,7 @@ peft
 datasets
 langgraph
 langchain
+langchain-community
 deep-translator
 fasttext
 pyarmor
