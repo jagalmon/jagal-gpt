@@ -29,5 +29,5 @@ llm-cache/
 
 # 학습셋/데이터셋
 dataset/
-*.json
-*.jsonl
+datasets/
+learned/
