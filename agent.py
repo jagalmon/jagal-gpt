@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from encode import encode_to_device #type: ignore
 import getpass as gp
 from harness import init_harness, proc_harness #type: ignore
+import json
 from pretrained import load_model #type: ignore
 import logging
 import multiprocessing as mp
@@ -31,6 +32,7 @@ import requests as rqs
 import ssl
 import torch
 import traceback as tb
+from training import serialize_messages #type: ignore
 from translator import any_to_english, english_to_korean #type: ignore
 from transformers import (
     AutoModelForCausalLM,
@@ -243,23 +245,8 @@ class JagalGpt(BaseModel):
                 print(f"Error occurred while running model: {e}")
                 tb.print_exc()
 
-    def preprocess(self, example: dict, tokenizer: PreTrainedTokenizerBase) -> dict:
-        text = ""
-
-        for i, msg in enumerate(example["messages"]):
-            print(f"========== preprocess json parse step")
-
-            role = msg["role"]
-            content = msg["content"]
-
-            print(i, role, content)
-
-            if role == "user":
-                text += f"User: {content}\n"
-            elif role == "assistant":
-                text += f"Assistant: {content}\n"
-
-        print(f"========== preprocess json parse result: \"{text}\"")
+    def preprocess(self, example: dict, idx: int, tokenizer: PreTrainedTokenizerBase) -> dict:
+        text = serialize_messages(example, idx)
 
         max_token_length = cfg.TOKEN_LENGTH_TRAIN
 
@@ -370,18 +357,19 @@ class JagalGpt(BaseModel):
         dataset = load_dataset("json", data_files=dataset_path)
         train_dataset = dataset["train"]
 
+        # 샘플 채취, 포맷 확인
         sample = train_dataset[0]
-        processed = self.preprocess(sample, tokenizer)
+        processed = self.preprocess(sample, 0, tokenizer)
+        print(f"========== (sampling) json dumps: " + json.dumps(sample, indent=2, ensure_ascii=False))
+        print(f"========== (sampling) decoded: {tokenizer.decode(processed['input_ids'])}")
+        print(f"========== (sampling) labels: {processed['labels'][:100]}", end="\n\n")
 
-        print(f"========== decoded: {tokenizer.decode(processed['input_ids'])}")
-        print(f"========== labels: {processed['labels'][:100]}")
-
+        # 학습 전처리
         train_dataset = train_dataset.map(
-            lambda x: self.preprocess(x, tokenizer),
+            lambda x, i: self.preprocess(x, i, tokenizer),
+            with_indices=True,
             remove_columns=train_dataset.column_names
         )
-
-        print(f"========== dataset sample: {train_dataset[0]}")
 
         data_collator = DataCollatorForLanguageModeling(
             tokenizer=tokenizer,
@@ -395,7 +383,7 @@ class JagalGpt(BaseModel):
             output_dir=cfg.LEARNED_DIR,
             do_train=True, # 학습 수행
             do_eval=False, # 평가 여부
-            per_device_train_batch_size=2, # 학습 배치 사이즈
+            per_device_train_batch_size=1, # 학습 배치 사이즈
             per_device_eval_batch_size=2, # 평가 배치 사이즈
             gradient_accumulation_steps=1, # gradient 누적 없음. 한번의 스텝마다 가중치(weight)에 update. 여러 스텝 모으지 않는다는 뜻.
             learning_rate=5e-5, # 모델 파라미터를 얼마나 크게 업데이트할지 결정하는 계수. 트랜스포머 미세조정에서 일반적인 기본값. weight = weight - learning_rate * gradient
@@ -403,7 +391,7 @@ class JagalGpt(BaseModel):
             adam_beta1=0.9,
             adam_beta2=0.999,
             adam_epsilon=1e-8,
-            num_train_epochs=3, # 너무 적은 반복 학습은 부족할수 있고 너무 많은 반복 학습으로 인한 과적합 방지
+            num_train_epochs=100, # 데이터 전체 반복 횟수
             max_steps=-1, # step 기준 학습 대신 epoch 기준 사용
             lr_scheduler_type="linear",
             warmup_steps=50, # 워밍업
@@ -439,7 +427,7 @@ class JagalGpt(BaseModel):
             preprocess_logits_for_metrics=self.preprocess_logits_for_metrics # 평가 여부 yes 일시 후처리
         )
 
-        trainer.train()
+        #trainer.train()
 
 class TrnCallback(TrainerCallback):
 
