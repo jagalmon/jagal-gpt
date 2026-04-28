@@ -5,8 +5,9 @@ from pathlib import Path
 import sys
 
 BASE_DIR = Path(__file__).resolve().parent
-UTILS_DIR = BASE_DIR / "utils"
-sys.path.insert(0, str(UTILS_DIR))
+sys.path.insert(0, str(BASE_DIR / "common"))
+sys.path.insert(0, str(BASE_DIR / "utils"))
+sys.path.insert(0, str(BASE_DIR / "lib"))
 
 import argparse as ap
 import config as cfg
@@ -391,7 +392,7 @@ class JagalGpt(BaseModel):
             adam_beta1=0.9,
             adam_beta2=0.999,
             adam_epsilon=1e-8,
-            num_train_epochs=100, # 데이터 전체 반복 횟수
+            num_train_epochs=10, # 데이터 전체 반복 횟수
             max_steps=-1, # step 기준 학습 대신 epoch 기준 사용
             lr_scheduler_type="linear",
             warmup_steps=50, # 워밍업
