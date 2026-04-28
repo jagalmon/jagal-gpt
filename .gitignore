@@ -23,11 +23,14 @@ logs/
 
 # 메타데이터
 .DS_Store
+.Spotlight-*
 
 # LLM 모델
 llm-cache/
 
 # 학습셋/데이터셋
-dataset/
-datasets/
-learned/
+dataset/*.json
+dataset/*.jsonl
+datasets/*.json
+datasets/*.jsonl
+learned/checkpoint-*/
