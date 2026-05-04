@@ -15,6 +15,8 @@ __pycache__/
 
 # 환경파일
 .env
+.git/
+.gitignore
 
 # 빌드/배포
 dist/
@@ -36,13 +38,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-# LLM 모델
-llm-cache/
-
-# 학습셋/데이터셋
-dataset/*.json
-dataset/*.jsonl
-datasets/*.json
-datasets/*.jsonl
-learned/checkpoint-*/

@@ -1,0 +1,17 @@
+ruff
+python-dotenv
+pydantic
+requests
+certifi
+pytest
+pyarmor
+torch
+transformers
+peft
+datasets
+langgraph
+langchain
+langchain-community
+deep-translator
+fasttext
+numpy<2
